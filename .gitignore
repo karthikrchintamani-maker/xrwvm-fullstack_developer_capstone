@@ -133,3 +133,9 @@ node_modules/
 __pycache__/
 *.pyc
 db.sqlite3
+
+djangoenv/
+node_modules/
+__pycache__/
+*.pyc
+db.sqlite3
