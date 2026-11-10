@@ -15,4 +15,7 @@ urlpatterns = [
     # path for logout
     path(route='logout', view=views.logout_request, name='logout'),
 
+    # path for get cars
+    path(route='get_cars', view=views.get_cars, name='getcars'),
+
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
