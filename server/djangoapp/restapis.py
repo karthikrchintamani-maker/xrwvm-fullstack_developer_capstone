@@ -16,7 +16,7 @@ def get_request(endpoint, **kwargs):
     if kwargs:
         for key, value in kwargs.items():
             params = params + key + "=" + str(value) + "&"
-    
+
     # Only attach '?' if params exist
     if params:
         request_url = backend_url + endpoint + "?" + params
