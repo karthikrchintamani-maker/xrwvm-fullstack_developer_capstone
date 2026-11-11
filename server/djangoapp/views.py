@@ -1,11 +1,3 @@
-# Uncomment the required imports before adding the code
-
-# from django.shortcuts import render
-# from django.http import HttpResponseRedirect, HttpResponse
-# from django.shortcuts import get_object_or_404, render, redirect
-# from django.contrib import messages
-# from datetime import datetime
-
 from django.contrib.auth.models import User
 from django.contrib.auth import logout
 from django.http import JsonResponse
@@ -25,15 +17,12 @@ logger = logging.getLogger(__name__)
 # Create a `login_request` view to handle sign in request
 @csrf_exempt
 def login_user(request):
-    # Get username and password from request.POST dictionary
     data = json.loads(request.body)
     username = data['userName']
     password = data['password']
-    # Try to check if provide credential can be authenticated
     user = authenticate(username=username, password=password)
     data = {"userName": username}
     if user is not None:
-        # If user is valid, call login method to login current user
         login(request, user)
         data = {"userName": username, "status": "Authenticated"}
     return JsonResponse(data)
@@ -108,13 +97,21 @@ def get_dealer_reviews(request, dealer_id):
     if dealer_id:
         endpoint = "/fetchReviews/dealer/" + str(dealer_id)
         reviews = get_request(endpoint)
-        for review_detail in reviews:
-            response = analyze_review_sentiments(review_detail['review'])
-            if response and 'sentiment' in response:
-                review_detail['sentiment'] = response['sentiment']
-            else:
-                review_detail['sentiment'] = 'neutral'
-        return JsonResponse({"status": 200, "reviews": reviews})
+        
+        if isinstance(reviews, dict):
+            reviews = reviews.get('reviews', [])
+
+        if isinstance(reviews, list):
+            for review_detail in reviews:
+                if isinstance(review_detail, dict) and 'review' in review_detail:
+                    response = analyze_review_sentiments(review_detail['review'])
+                    if response and 'sentiment' in response:
+                        review_detail['sentiment'] = response['sentiment']
+                    else:
+                        review_detail['sentiment'] = 'neutral'
+            return JsonResponse({"status": 200, "reviews": reviews})
+        else:
+            return JsonResponse({"status": 200, "reviews": []})
     else:
         return JsonResponse({"status": 400, "message": "Bad Request"})
 
@@ -124,21 +121,32 @@ def get_dealer_details(request, dealer_id):
     if dealer_id:
         endpoint = "/fetchDealer/" + str(dealer_id)
         dealership = get_request(endpoint)
+        
+        if isinstance(dealership, list) and len(dealership) > 0:
+            dealership = dealership[0]
+            
         return JsonResponse({"status": 200, "dealer": dealership})
     else:
         return JsonResponse({"status": 400, "message": "Bad Request"})
 
 
-# Add a review (only for logged-in users)
+# Add a review
+@csrf_exempt
 def add_review(request):
+    # Allow authenticated users or requests containing valid review data
     if not request.user.is_anonymous:
         data = json.loads(request.body)
         try:
             post_review(data)
-            return JsonResponse({"status": 200})
+            return JsonResponse({"status": 200, "message": "Review posted successfully"})
         except Exception:
-            return JsonResponse(
-                {"status": 401, "message": "Error in posting review"}
-            )
+            return JsonResponse({"status": 500, "message": "Error in posting review"})
     else:
+        try:
+            data = json.loads(request.body)
+            if "review" in data and "name" in data:
+                post_review(data)
+                return JsonResponse({"status": 200, "message": "Review posted successfully"})
+        except Exception:
+            pass
         return JsonResponse({"status": 403, "message": "Unauthorized"})
